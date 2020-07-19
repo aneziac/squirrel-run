@@ -25,8 +25,8 @@ class World:
         self.create_map()
 
     def load_tiles(self):
-        for name in sorted([f for f in os.listdir('./assets/tiles') if not f.startswith('.')]):
-            self.tiles.append(load(name, 'tiles', [self.TILE_SIZE] * 2))
+        for name in sorted([f for f in os.listdir('./assets/tile') if not f.startswith('.')]):
+            self.tiles.append(load(name, 'tile', [self.TILE_SIZE] * 2))
 
     def create_map(self):
         self.world_map = [[0] * self.WORLD_HEIGHT for _ in range(self.WORLD_WIDTH)]
@@ -56,6 +56,8 @@ def load(file, extra_path="", scale=None):
 
 
 # Main code starts here
+pg.init()
+
 SCREEN_WIDTH = 900
 SCREEN_HEIGHT = 600
 screen = pg.display.set_mode([SCREEN_WIDTH, SCREEN_HEIGHT], flags=pg.FULLSCREEN)
