@@ -4,6 +4,7 @@ import pygame as pg
 import math
 from random import random, randint
 import colors
+from levels import level1 as level1
 
 
 # Classes
@@ -34,9 +35,15 @@ class World:
         for x in range(self.TREE_MAX):
             self.background[x] = randint(0, len([f for f in os.listdir('./assets/image/tree') if not f.startswith('.')]) - 1)
 
-        self.world_map = [[-1] * self.WORLD_HEIGHT for _ in range(self.WORLD_WIDTH)]
-        for x in range(self.WORLD_WIDTH):
-            self.world_map[x][-1] = 0
+        #self.world_map = [[-1] * self.WORLD_WIDTH for _ in range(self.WORLD_HEIGHT)]
+        self.world_map = level1.world
+        self.WORLD_WIDTH = len(level1.world[0])
+
+        # add grass and water
+        #for x in range(self.WORLD_WIDTH):
+        #    self.world_map[x][-1] = 0
+        #for x in range(randint(self.WORLD_WIDTH // 20, self.WORLD_WIDTH // 10)):
+        #    self.world_map[]
 
     def render_trees(self):
         background_scroll_x = player.scroll_x * (world.SCREEN_TILE_WIDTH / world.TREE_WIDTH) * 4
@@ -53,7 +60,7 @@ class World:
 
         for x in range(self.SCREEN_TILE_WIDTH):
             for y in range(self.SCREEN_TILE_HEIGHT):
-                tile = self.world_map[(x + math.floor(player.scroll_x))][self.SCREEN_TILE_HEIGHT - 1 - (y + math.floor(player.scroll_y))]
+                tile = self.world_map[self.SCREEN_TILE_HEIGHT - 1 - (y + math.floor(player.scroll_y))][(x + math.floor(player.scroll_x))]
                 if tile != -1:
                     screen.blit(self.tiles[tile], q1_transform((x - x_tile_offset) * self.TILE_SIZE, ((y + 1) - y_tile_offset) * self.TILE_SIZE))
 
@@ -65,7 +72,8 @@ class Player(pg.sprite.Sprite):
         self.dims = [128, 64]
 
         self.walk = load_folder('sprite/walk', self.dims)
-        self.jump = load_folder('sprite/jump', self.dims)
+        self.jumpup = load_folder('sprite/jumpup', self.dims)
+        self.jumpdown = load_folder('sprite/jumpdown', self.dims)
         self.glide = load_folder('sprite/glide', self.dims)
         self.costume = [self.walk, 12]
 
@@ -83,7 +91,10 @@ class Player(pg.sprite.Sprite):
                 return
             else:
                 self.yvel += self.YACC
-                self.costume = [self.jump, 13]
+                if self.yvel < 0 and self.y - 150 < self.RESTING_Y:
+                    self.costume = [self.jumpdown, 6]
+                elif self.costume != [[self.jumpup[6]], 1]:
+                    self.costume = [self.jumpup, 7]
         elif keys[pg.K_w]:
             self.yvel = 20
         else:
@@ -94,7 +105,9 @@ class Player(pg.sprite.Sprite):
     def render(self):
         if self.costume == [self.glide, 3] and round(self.scroll_x * 10) % self.costume[1] == 2:
             self.costume = [[self.glide[2]], 1]
-        screen.blit(self.costume[0][frame % self.costume[1]], q1_transform(world.TILE_SIZE * 2, self.y))
+        elif self.costume == [self.jumpup, 7] and round(self.scroll_x * 10) % self.costume[1] == 6:
+            self.costume = [[self.jumpup[6]], 1]
+        screen.blit(self.costume[0][(frame // 2) % self.costume[1]], q1_transform(world.TILE_SIZE * 2, self.y))
 
 
 # Global functions
