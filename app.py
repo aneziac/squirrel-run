@@ -2,6 +2,7 @@ import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame as pg
 import math
+import time
 from random import random, randint
 import colors
 from levels import level1 as level1
@@ -41,8 +42,8 @@ class World:
 
         # add grass and water
         #for x in range(self.WORLD_WIDTH):
-        #    self.world_map[x][-1] = 0
-        #for x in range(randint(self.WORLD_WIDTH // 20, self.WORLD_WIDTH // 10)):
+        #    self.world_map[-1][x] = 0
+        # for x in range(randint(self.WORLD_WIDTH // 20, self.WORLD_WIDTH // 10)):
         #    self.world_map[]
 
     def render_trees(self):
@@ -59,7 +60,7 @@ class World:
         y_tile_offset = player.scroll_y - math.floor(player.scroll_y)
 
         for x in range(self.SCREEN_TILE_WIDTH):
-            for y in range(self.SCREEN_TILE_HEIGHT):
+            for y in range(self.SCREEN_TILE_HEIGHT - 5):
                 tile = self.world_map[self.SCREEN_TILE_HEIGHT - 1 - (y + math.floor(player.scroll_y))][(x + math.floor(player.scroll_x))]
                 if tile != -1:
                     screen.blit(self.tiles[tile], q1_transform((x - x_tile_offset) * self.TILE_SIZE, ((y + 1) - y_tile_offset) * self.TILE_SIZE))
@@ -67,9 +68,10 @@ class World:
 
 class Player(pg.sprite.Sprite):
     def __init__(self):
-        self.scroll_x = 5
+        self.scroll_x = 0
         self.scroll_y = 0
         self.dims = [128, 64]
+        self.score = 0
 
         self.walk = load_folder('sprite/walk', self.dims)
         self.jumpup = load_folder('sprite/jumpup', self.dims)
@@ -83,11 +85,17 @@ class Player(pg.sprite.Sprite):
         self.y = self.RESTING_Y
 
     def update(self, keys):
-        if self.y >= self.RESTING_Y:
+        self.tile_x, self.tile_y = math.floor(self.scroll_x) + 2, self.y // world.TILE_SIZE
+
+        if world.world_map[-self.tile_y][self.tile_x] == 1:
+            self.score += 1
+            world.world_map[-self.tile_y][self.tile_x] = -1
+
+        if not world.world_map[-self.tile_y][self.tile_x] == 5 and self.y >= self.RESTING_Y:
             if keys[pg.K_SPACE]:
                 if self.costume != [[self.glide[2]], 1]:
                     self.costume = [self.glide, 3]
-                self.y -= 1
+                self.y -= 2
                 return
             else:
                 self.yvel += self.YACC
@@ -98,6 +106,9 @@ class Player(pg.sprite.Sprite):
         elif keys[pg.K_w]:
             self.yvel = 20
         else:
+            if world.world_map[-self.tile_y][self.tile_x] == 3 or world.world_map[self.tile_y - 1][self.tile_x] == 4 or world.world_map[self.tile_y - 1][self.tile_x] == 6:
+                return "Over"
+
             self.yvel = 0
             self.costume = [self.walk, 12]
         self.y += self.yvel
@@ -132,8 +143,30 @@ def load_folder(folder_path, size):
     return textures
 
 
+class Acorn:
+    instances = []
+
+    def __init__(self, x):
+        self.y = randint(SCREEN_HEIGHT - 200, SCREEN_HEIGHT)
+        self.yacc = -0.2
+        self.yvel = 0
+        self.x = x
+        Acorn.instances.append(self)
+
+    def update(self):
+        if self.y > world.TILE_SIZE * 2:
+            self.yvel += self.yacc
+            self.y += self.yvel
+        else:
+            Acorn.instances.remove(self)
+
+    def render(self):
+        screen.blit(Acorn.texture, q1_transform(self.x - player.scroll_x, self.y))
+
+
 # Main code starts here
 pg.init()
+pg.font.init()
 
 SCREEN_WIDTH = 900
 SCREEN_HEIGHT = 600
@@ -141,23 +174,45 @@ screen = pg.display.set_mode([SCREEN_WIDTH, SCREEN_HEIGHT]) #,flags=pg.FULLSCREE
 pg.display.set_caption("Squirrel Run")
 running = True
 frame = 0
+font = pg.font.Font('assets/font/retro.ttf', 40)
 
 # Class instances
 world = World()
 player = Player()
+
+for x in range(world.WORLD_HEIGHT):
+    for y in range(world.WORLD_WIDTH):
+        if world.world_map[x][y] == 5:
+            pass#print(x, y)
+
+Acorn.texture = load('2_acorn.png', 'tile', [world.TILE_SIZE] * 2)
 
 while running:
     keys = pg.key.get_pressed()
     if pg.QUIT in [event.type for event in pg.event.get()] or keys[pg.K_ESCAPE]:
         running = False
 
-    player.update(keys)
+    if player.update(keys) == "Over":
+        screen.blit(font.render("GAME OVER!", True, colors.black), q1_transform(SCREEN_WIDTH // 2 - font.size("GAME OVER!")[0] // 2, SCREEN_HEIGHT // 2 - font.size("GAME OVER!")[1] // 2))
+        pg.display.update()
+        while not keys[pg.K_ESCAPE] or pg.QUIT not in [event.type for event in pg.event.get()]:
+            quit()
+
+    for instance in Acorn.instances:
+        instance.update()
 
     screen.fill(colors.sky_blue)
 
     world.render_trees()
     world.render_tiles()
+    for instance in Acorn.instances:
+        instance.render()
     player.render()
+
+    screen.blit(font.render("Score: " + str(player.score), True, colors.black), q1_transform(0, SCREEN_HEIGHT))
+
+    if frame % 5 == 0 and random() < 0.03:
+        Acorn(randint(round(player.scroll_x + 200), round(player.scroll_x) + SCREEN_WIDTH - 100))
 
     player.scroll_x += 0.1
     frame += 1
