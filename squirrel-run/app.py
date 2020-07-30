@@ -2,7 +2,6 @@ import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame as pg
 import math
-import time
 from random import random, randint
 import pglib
 from levels import level1 as level1
@@ -19,6 +18,8 @@ class World:
         self.BACKGROUND_WIDTH = (screen.WIDTH // self.TREE_DIST) + 2
         self.RELATIVE_TREE_SPEED = 3
         self.TREES_OFFSET = ((self.TREE_WIDTH - self.TREE_DIST) * 0.5)
+
+        self.ACORN_NUMBER = 3
 
         self.SCREEN_TILE_WIDTH = (screen.WIDTH // self.TILE_SIZE) + 2
         self.SCREEN_TILE_HEIGHT = (screen.HEIGHT // self.TILE_SIZE) + 2
@@ -67,7 +68,8 @@ class World:
 
         for x in range(self.BACKGROUND_WIDTH):
             tree = self.TREES[x + (math.floor(background_scroll_x))]
-            screen.blit(self.TREE_TEXTURES[tree], [(x - background_tile_offset) * self.TREE_DIST - self.TREES_OFFSET, self.TILE_SIZE - 100])
+            xpos = (x - background_tile_offset) * self.TREE_DIST - self.TREES_OFFSET
+            screen.blit(self.TREE_TEXTURES[tree], [xpos, self.TILE_SIZE - 100])
 
     def render_tiles(self):
         x_tile_offset = round(player.scroll_x - math.floor(player.scroll_x), 3)
@@ -87,11 +89,12 @@ class Player(pg.sprite.Sprite):
         self.dims = [128, 64]
         self.score = 0
 
-        self.walk = pglib.load_folder("player/walk", self.dims)
-        self.jumpup = pglib.load_folder("player/jump", self.dims)
-        self.jumpdown = pglib.load_folder("player/land", self.dims)
-        self.glide = pglib.load_folder("player/glide", self.dims)
-        self.costume = [self.walk, 12]
+        self.actions = {}
+        for action in ["walk", "jump", "land", "glide"]:
+            if action == "walk":
+                self.load_action(action, True)
+            else:
+                self.load_action(action)
 
         self.YACC = -1
         self.yvel = 0
@@ -100,18 +103,21 @@ class Player(pg.sprite.Sprite):
 
         self.X = world.TILE_SIZE * 2
         self.X_OFFSET = ((self.X + self.dims[0]) / world.TILE_SIZE) - 1
+        self.SPEED = 0.05
+
+        self.old_action = "walk"
+        self.anim_frame = 0
+
+    def load_action(self, name, loop=False):
+        folder = "player/" + name
+        self.actions[name] = [pglib.load_folder(folder, self.dims), pglib.num_files("assets/image/" + folder), loop]
 
     def update(self, keys):
         self.tile_x, self.tile_y = math.floor(self.scroll_x + self.X_OFFSET), self.y // world.TILE_SIZE
         on_tile = world.MAP[self.tile_y + 1][self.tile_x]
-        front_tile = world.MAP[self.tile_y + 1][self.tile_x + 1]
         below_tile = world.MAP[self.tile_y][self.tile_x]
 
-        if front_tile == 3:
-            self.score += 1
-            world.MAP[self.tile_y + 1][self.tile_x + 1] = 0
-
-        elif on_tile == 3:
+        if on_tile == 3:
             self.score += 1
             world.MAP[self.tile_y + 1][self.tile_x] = 0
 
@@ -124,64 +130,95 @@ class Player(pg.sprite.Sprite):
 
             # walking
             else:
-                self.y += world.TILE_SIZE - (self.y % world.TILE_SIZE) - 1 # prevent clipping into tile underneath
+                self.y += world.TILE_SIZE - (self.y % world.TILE_SIZE) - 1  # prevent clipping into tile underneath
                 self.yvel = 0
-                self.costume = [self.walk, 12]
+                self.action = "walk"
 
         else:
             # drowning
             if below_tile == 4 or below_tile == 5 or below_tile == 6:
-                print("You died")
-                self.scroll_x, self.scroll_y = 0, 0
-                self.y = self.RESTING_Y
+                self.die()
 
             # gliding
             elif keys[pg.K_SPACE]:
-                if self.costume != [[self.glide[2]], 1]:
-                    self.costume = [self.glide, 3]
                 self.yvel = 0
                 self.y -= 2
+                self.action = "glide"
 
-            # falling
             else:
+                # landing
+                if False:  # self.tile_y >= 3 and world.MAP[self.tile_y - 3][self.tile_x] == 1 and not keys[pg.K_SPACE]:
+                    self.action = "land"
+
+                # midair
+                else:
+                    self.action = "jump"
+
                 self.yvel += self.YACC
-                if self.costume != [[self.jumpup[6]], 1]:
-                    self.costume = [self.jumpup, 7]
 
         self.y += self.yvel
+        self.anim_frame += 1
+        self.scroll_x += self.SPEED
+
+    def die(self):
+        print("You died")
+        self.scroll_x, self.scroll_y = 0, 0
+        self.y = self.RESTING_Y
 
     def render(self):
-        if self.costume == [self.glide, 3] and round(self.scroll_x * 10) % self.costume[1] == 2:
-            self.costume = [[self.glide[2]], 1]
-        elif self.costume == [self.jumpup, 7] and round(self.scroll_x * 10) % self.costume[1] == 6:
-            self.costume = [[self.jumpup[6]], 1]
-        screen.blit(self.costume[0][(screen.frame // 2) % self.costume[1]], [self.X, self.y])
+        blit_loc = [self.X, self.y]
+        action = self.actions[self.action]
+
+        if self.old_action != self.action:
+            self.anim_frame = 0
+            self.old_action = self.action
+
+        if not action[2] and self.anim_frame == action[1]:
+            screen.blit(action[0][self.anim_frame - 1], blit_loc)
+            self.anim_frame -= 1
+        else:
+            screen.blit(action[0][(self.anim_frame // 2) % action[1]], blit_loc)
 
 
 class Acorn:
     instances = []
 
-    def __init__(self, x):
-        self.TEXTURE = pglib.load('2_acorn.png', 'tile', [world.TILE_SIZE] * 2)
-        self.y = randint(screen.HEIGHT - 200, screen.HEIGHT)
-        self.yacc = -0.2
-        self.yvel = 0
-        self.x = x
+    def __init__(self):
+        self.TEXTURE = pglib.load('acorn.png', 'entity', [world.TILE_SIZE] * 2)
         Acorn.instances.append(self)
+        self.fade = -2
+
+    def spawn(self):
+        self.y = randint(screen.HEIGHT - 200, screen.HEIGHT)
+        self.yacc = -0.1
+        self.yvel = 0
+        self.x = randint(round(player.scroll_x + 200), round(player.scroll_x) + screen.WIDTH - 100)
+        self.fade = -1
 
     def update(self):
-        if self.y > world.TILE_SIZE * 2:
+        if self.fade == 0:
+            self.fade = -2
+            return
+        elif self.fade > 0:
+            self.fade -= 1
+            self.x -= player.SPEED * world.TILE_SIZE
+            return
+
+        self.tile_x, self.tile_y = round(self.x) // world.TILE_SIZE, round(self.y) // world.TILE_SIZE
+
+        if self.tile_x == player.tile_x and self.tile_y == player.tile_y:
+            player.die()
+        elif not world.MAP[self.tile_y][self.tile_x] == 0 and not world.MAP[self.tile_y][self.tile_x] == 3:
+            self.fade = 30
+        else:
             self.yvel += self.yacc
             self.y += self.yvel
-        else:
-            Acorn.instances.remove(self)
 
     def render(self):
         screen.blit(self.TEXTURE, [self.x - player.scroll_x, self.y])
 
 
 # Main code starts here
-
 screen = pglib.Screen([900, 600], "Squirrel Run")
 running = True
 font = pg.font.Font('assets/font/retro.ttf', 40)
@@ -190,24 +227,30 @@ font = pg.font.Font('assets/font/retro.ttf', 40)
 world = World()
 player = Player()
 
+for x in range(world.ACORN_NUMBER):
+    Acorn()
+
 while screen.update():
+    # update
     keys = pg.key.get_pressed()
     player.update(keys)
 
-    #for instance in Acorn.instances:
-    #    instance.update()
+    for acorn in Acorn.instances:
+        if random() < 0.01 and acorn.fade == -2:
+            acorn.spawn()
+        if acorn.fade >= -1:
+            acorn.update()
 
+    # render
     screen.canvas.fill(pglib.sky_blue)
 
     world.render_trees()
     world.render_tiles()
-    for instance in Acorn.instances:
-        instance.render()
+
+    for acorn in Acorn.instances:
+        if acorn.fade >= -1:
+            acorn.render()
+
     player.render()
 
     screen.raw_text("Score: " + str(player.score), pglib.black, font, [0, 0])
-
-    # if screen.frame % 5 == 0 and random() < 0.03:
-    #    Acorn(randint(round(player.scroll_x + 200), round(player.scroll_x) + screen.WIDTH - 100))
-
-    player.scroll_x += 0.05

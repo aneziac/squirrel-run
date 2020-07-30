@@ -46,10 +46,10 @@ class Screen:
                 transformed_coordinates.append(q1_transform_coordinate(x))
             return transformed_coordinates
         else:
-            return q1_transform_coordinate(location) 
+            return q1_transform_coordinate(location)
 
     def q1_transform_rect(self, location, dims):  # transform rectangle (4 inputs)
-        return [location[0] + a, self.HEIGHT - location[1], -dims[0], -dims[1]]
+        return [location[0], self.HEIGHT - location[1], -dims[0], -dims[1]]
 
     def text(self, text, color, font, location):
         rendered_text = font.render(text, True, color)
@@ -66,9 +66,9 @@ class Screen:
         self.text(text, color, font, [self.WIDTH // 2, height])
 
     def polygon(self, vertices, color):
-        vertices = q1_transform(vertices)
+        vertices = self.q1_transform(vertices)
         for v in vertices:
-            if self.is_onscreen(q1_transform(v)):
+            if self.is_onscreen(self.q1_transform(v)):
                 pg.gfxdraw.aapolygon(self.canvas, vertices, color)
                 pg.gfxdraw.filled_polygon(self.canvas, vertices, color)
                 return
@@ -112,6 +112,7 @@ def load(file, extra_path="", scale=None):
     else:
         scale = [round(x) for x in scale]
         return pg.transform.scale(image, scale)
+
 
 # add mirror image argument
 def load_folder(folder_path, scale=None):
