@@ -16,14 +16,13 @@ class Screen:
         pg.mixer.init()
 
         flags = pg.DOUBLEBUF
-        if len(sys.argv) > 1:
-            if "w" not in sys.argv[1]:
-                flags = flags | pg.FULLSCREEN | pg.HWSURFACE
-            else:
-                if "n" in sys.argv[1]:
-                    flags = flags | pg.NOFRAME
-                if "r" in sys.argv[1]:
-                    flags = flags | pg.RESIZABLE
+        if len(sys.argv) == 1 or "w" not in sys.argv[1]:
+            flags = flags | pg.FULLSCREEN | pg.HWSURFACE
+        elif len(sys.argv) > 1:
+            if "n" in sys.argv[1]:
+                flags = flags | pg.NOFRAME
+            if "r" in sys.argv[1]:
+                flags = flags | pg.RESIZABLE
 
         self.WIDTH, self.HEIGHT = dims
         self.canvas = pg.display.set_mode(dims, flags)
@@ -93,8 +92,8 @@ class Screen:
         return in_width and in_height
 
     def update(self):
-        events = pg.event.get()
-        for event in events:
+        self.events = pg.event.get()
+        for event in self.events:
             if event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE):
                 return False
 
