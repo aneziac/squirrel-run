@@ -21,7 +21,7 @@ class Screen:
         elif len(sys.argv) > 1:
             if "n" in sys.argv[1]:
                 flags = flags | pg.NOFRAME
-            if "r" in sys.argv[1]:
+            elif "r" in sys.argv[1]:
                 flags = flags | pg.RESIZABLE
 
         self.WIDTH, self.HEIGHT = dims
@@ -105,7 +105,7 @@ class Screen:
 
 # Load functions
 def load(file, extra_path="", scale=None):
-    path = os.path.join("./assets/image/" + extra_path, file)
+    path = os.path.join("./squirrel_run/assets/image/" + extra_path, file)
     image = pg.image.load(path)
     if scale is None:
         return image
@@ -117,7 +117,7 @@ def load(file, extra_path="", scale=None):
 # add mirror image argument
 def load_folder(folder_path, scale=None):
     textures = []
-    for name in sorted([f for f in os.listdir("./assets/image/" + folder_path) if not f.startswith('.')]):
+    for name in sorted([f for f in os.listdir("./squirrel_run/assets/image/" + folder_path) if not f.startswith('.')]):
         textures.append(load(name, folder_path, scale))
     return textures
 
@@ -128,4 +128,4 @@ def play_music(file_path):
 
 
 def num_files(directory):
-    return len([name for name in os.listdir(directory) if name != ".DS_Store"])
+    return len([name for name in os.listdir("./squirrel_run/assets/" + directory) if name != ".DS_Store"])

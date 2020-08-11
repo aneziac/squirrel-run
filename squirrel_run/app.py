@@ -3,8 +3,7 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame as pg
 import math
 from random import random, randint
-import pglib
-from levels import level1 as level1
+from squirrel_run import pglib
 
 
 # Classes
@@ -60,7 +59,7 @@ class World:
         self.TREE_MAX = (self.WIDTH * self.TILE_SIZE) // self.TREE_DIST
         self.TREES = []
         for x in range(self.TREE_MAX):
-            self.TREES.append(randint(0, pglib.num_files("./assets/image/tree") - 1))
+            self.TREES.append(randint(0, pglib.num_files("image/tree") - 1))
 
     def render_trees(self):
         background_scroll_x = player.scroll_x * self.BACKGROUND_SCALAR
@@ -110,7 +109,7 @@ class Player(pg.sprite.Sprite):
 
     def load_action(self, name, loop=False):
         folder = "player/" + name
-        self.actions[name] = [pglib.load_folder(folder, self.dims), pglib.num_files("assets/image/" + folder), loop]
+        self.actions[name] = [pglib.load_folder(folder, self.dims), pglib.num_files("image/" + folder), loop]
 
     def update(self, keys):
         self.tile_x, self.tile_y = math.floor(self.scroll_x + self.X_OFFSET), self.y // world.TILE_SIZE
@@ -177,7 +176,7 @@ class Player(pg.sprite.Sprite):
             screen.blit(action[0][self.anim_frame - 1], blit_loc)
             self.anim_frame -= 1
         else:
-            screen.blit(action[0][(self.anim_frame // 2) % action[1]], blit_loc)
+            screen.blit(action[0][(self.anim_frame // 3) % action[1]], blit_loc)
 
 
 class Acorn:
@@ -221,7 +220,7 @@ class Acorn:
 # Main code starts here
 screen = pglib.Screen([900, 600], "Squirrel Run")
 running = True
-font = pg.font.Font('assets/font/retro.ttf', 40)
+font = pg.font.Font('./squirrel_run/assets/font/retro.ttf', 40)
 
 # Class instances
 world = World()
